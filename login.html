@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alumini_Network</title>
+  <link rel="stylesheet" href="login.css">
+  <script>
+    
+    async function handleFormSubmit(event, action) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+
+  let url = "";
+  let body = {};
+  let showOkButton = false; // Flag to show OK button
+  let alertDuration = 3000; // Default alert duration (3 seconds)
+
+  switch (action) {
+    case "login":
+      url = "http://localhost:3000/login";
+      body = {
+        username: formData.get("username"),
+        password: formData.get("password"),
+      };
+      break;
+    case "register":
+      url = "http://localhost:3000/register";
+      body = {
+        username: formData.get("username"),
+        password: formData.get("password"),
+        securityQuestion: formData.get("securityQuestion"),
+        securityAnswer: formData.get("securityAnswer"),
+      };
+      break;
+    case "forgot":
+      url = "http://localhost:3000/forgot-password";
+      body = {
+        username: formData.get("username"),
+        securityAnswer: formData.get("securityAnswer"),
+      };
+      showOkButton = true; // Set flag to show OK button for forgot password
+      alertDuration = 10000; // Set a longer duration for forgot password alerts
+      break;
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      showAlert('success', data.message, showOkButton, alertDuration);
+
+      if (action === "login") {
+        // Save user data to localStorage or pass it to the profile page
+        localStorage.setItem("username", body.username);
+
+        if (!data.profileExists) {
+          // Redirect to the profile page if the profile doesn't exist
+          setTimeout(() => {
+            window.location.href = "profile.html";
+          }, 1500); // Add a small delay for better user experience
+        } else {
+          // Redirect to the main page if the profile exists
+          setTimeout(() => {
+            window.location.href = "main.html";
+          }, 1500);
+        }
+      }
+    } else {
+      showAlert('error', data.error, showOkButton, alertDuration);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    showAlert('error', "An error occurred. Please try again.", showOkButton, alertDuration);
+  }
+    }
+
+    function showAlert(type, message, showOkButton, duration) {
+      const alertContainer = document.createElement('div');
+      alertContainer.classList.add('alert', type);
+      alertContainer.innerHTML = `
+        <span>${message}</span>
+        ${showOkButton ? '<button class="ok-btn" onclick="this.parentElement.style.display=\'none\'">OK</button>' : ''}
+      `;
+      document.body.appendChild(alertContainer);
+
+      alertContainer.style.display = 'block';
+
+      if (!showOkButton) {
+        setTimeout(() => {
+          alertContainer.style.display = 'none';
+        }, duration);
+      }
+    }
+
+    async function fetchSecurityQuestion(username) {
+      if (!username) {
+        document.getElementById("forgot-security-answer").placeholder = "Enter the answer to your security question";
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:3000/security-question/${username}`);
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById("forgot-security-answer").placeholder = data.securityQuestion;
+        } else {
+          document.getElementById("forgot-security-answer").placeholder = "Enter the answer to your security question";
+        }
+      } catch (error) {
+        console.error("Error fetching security question:", error);
+        document.getElementById("forgot-security-answer").placeholder = "Enter the answer to your security question";
+      }
+    }
+  </script>
+</head>
+<body class="login_body">
+  <div class="container">
+    <div id="login-form">
+      <h1>Alumini_Network</h1>
+      <hr class="line">
+      <h2>Login</h2>
+      <form onsubmit="handleFormSubmit(event, 'login')">
+        <label for="login-username">Email:</label>
+        <input type="email" id="login-username" name="username" placeholder="Enter your email" required />
+        <label for="login-password">Password:</label>
+        <input type="password" id="login-password" name="password" placeholder="Enter your password" required />
+        <button type="submit">Login</button>
+      </form>
+      <br>
+      <p class="button-row">
+        <span class="Account">Don't have an account?<span class="register-line">Register Now!</span></span>
+        <a href="#" onclick="showForm('register')">Register</a>
+        <a href="#" onclick="showForm('forgot')">Forgot Password?</a>
+      </p>
+    </div>
+
+    <div id="register-form" style="display: none;">
+      <h2>Register</h2>
+      <form onsubmit="handleFormSubmit(event, 'register')">
+        <label for="register-username">Email:</label>
+        <input type="email" id="register-username" name="username" placeholder="Enter your email" required />
+        <label for="register-password">Password:</label>
+        <input type="password" id="register-password" name="password" placeholder="Choose a password" required />
+        <label for="register-security-question">Security Question:</label>
+        <input type="text" id="register-security-question" name="securityQuestion" placeholder="Enter a security question" required />
+        <label for="register-security-answer">Answer to Security Question:</label>
+        <input type="text" id="register-security-answer" name="securityAnswer" placeholder="Enter answer to the security question" required />
+        <button type="submit">Register</button>
+      </form>
+      <button class="back_login" onclick="showForm('login')">Back to Login</button>
+    </div>
+
+    <div id="forgot-form" style="display: none;">
+      <h2>Forgot Password</h2>
+      <form onsubmit="handleFormSubmit(event, 'forgot')">
+        <label for="forgot-username">Email:</label>
+        <input
+          type="email"
+          id="forgot-username"
+          name="username"
+          placeholder="Enter your email"
+          required
+          oninput="fetchSecurityQuestion(this.value)"
+        />
+        <label for="forgot-security-answer">Answer to Security Question:</label>
+        <input
+          type="text"
+          id="forgot-security-answer"
+          name="securityAnswer"
+          placeholder="Enter the answer to your security question"
+          required
+        />
+        <button type="submit">Generate New Password</button>
+      </form>
+      <button class="back_login" onclick="showForm('login')">Back to Login</button>
+    </div>
+  </div>
+
+  <script>
+    function showForm(formId) {
+      document.getElementById("login-form").style.display = formId === "login" ? "block" : "none";
+      document.getElementById("register-form").style.display = formId === "register" ? "block" : "none";
+      document.getElementById("forgot-form").style.display = formId === "forgot" ? "block" : "none";
+    }
+  </script>
+</body>
+</html>
